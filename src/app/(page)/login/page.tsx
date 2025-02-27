@@ -25,7 +25,7 @@ export default function Login() {
     try {
       const success = await login(username, password);
       if (success) {
-        router.push("/dashboard");
+        router.push("/admin");
       } else {
         toast.error("用户名或密码错误");
       }

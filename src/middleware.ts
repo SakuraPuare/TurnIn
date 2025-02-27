@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth"; // 假设我们有一个验证token的函数
 
-const adminRoutes = ["/api/admin", "/admin"];
+const adminRoutes = ["/api/admin"];
 
 export async function middleware(request: NextRequest) {
   // 检查请求路径是否在 adminRoutes 中
@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
 
     // 检查 token 是否有效
     let isAuthenticated = false;
-    
+
     if (token) {
       try {
         // 验证 token 的有效性
@@ -29,20 +29,10 @@ export async function middleware(request: NextRequest) {
     // 如果未认证，根据路径类型返回不同响应
     if (!isAuthenticated) {
       // 对于 API 路由，返回 401 未授权错误
-      if (request.nextUrl.pathname.startsWith("/api/admin")) {
-        return NextResponse.json(
-          { error: "未授权访问，请先登录" },
-          { status: 401 }
-        );
-      }
-      
-      // 对于管理页面路由，重定向到登录页面
-      if (request.nextUrl.pathname.startsWith("/admin")) {
-        const loginUrl = new URL("/login", request.url);
-        // 可以添加 returnTo 参数以便登录后返回原页面
-        loginUrl.searchParams.set("returnTo", request.nextUrl.pathname);
-        return NextResponse.redirect(loginUrl);
-      }
+      return NextResponse.json(
+        { error: "未授权访问，请先登录" },
+        { status: 401 },
+      );
     }
   }
 

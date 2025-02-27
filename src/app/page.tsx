@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
+
+import Header from "@/components/Header";
 
 export default function Home() {
-
-  return <></>;
+  return (
+    <>
+      <Header />
+    </>
+  );
 }
