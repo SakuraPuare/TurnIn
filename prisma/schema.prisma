@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Class {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  students    Student[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  assignments Assignment[] @relation("ClassToAssignment")
+}
+
+model Student {
+  id          String       @id @default(uuid())
+  studentId   String       @unique // 学号
+  name        String
+  email       String?
+  phone       String?
+  classId     String
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  submissions Submission[] // 关联学生的提交记录
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([classId, studentId])
+}
+
+model Assignment {
+  id             String          @id @default(uuid())
+  title          String
+  description    String?
+  deadline       DateTime
+  status         String          @default("active") // active, closed
+  fileNameFormat String          @default("{studentId}_{assignmentTitle}")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  classes        Class[]         @relation("ClassToAssignment")
+  submissions    Submission[]
+  requiredFields RequiredField[] // 关系：一个作业可以有多个必填字段
+}
+
+model RequiredField {
+  id           String     @id @default(uuid())
+  name         String
+  label        String
+  type         String     @default("text") // text, select, number
+  description  String?
+  options      String? // JSON string for select options
+  required     Boolean    @default(true)
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Submission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  studentId    String
+  fileUrl      String?
+  notes        String?
+  formData     String? // JSON格式存储表单数据
+  status       String     @default("pending") // pending, completed, failed
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [studentId], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId]) // 每个学生对每个作业只能有一次提交
+}
