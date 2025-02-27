@@ -1,46 +1,30 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth"; // 假设我们有一个验证token的函数
+import { isAdmin } from './lib/auth';
 
-const adminRoutes = ["/api/admin"];
+export function middleware(request: NextRequest) {
+  // Get the pathname of the request
+  const path = request.nextUrl.pathname;
 
-export async function middleware(request: NextRequest) {
-  // 检查请求路径是否在 adminRoutes 中
-  if (adminRoutes.some((route) => request.nextUrl.pathname.startsWith(route))) {
-    // 从请求头中获取 Authorization token
-    const authHeader = request.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.replace("Bearer ", "")
-      : authHeader;
-
-    // 检查 token 是否有效
-    let isAuthenticated = false;
-
-    if (token) {
-      try {
-        // 验证 token 的有效性
-        isAuthenticated = await verifyToken(token);
-      } catch {
-        // 验证过程出错，视为未认证
-        isAuthenticated = false;
-      }
-    }
-
-    // 如果未认证，根据路径类型返回不同响应
-    if (!isAuthenticated) {
-      // 对于 API 路由，返回 401 未授权错误
+  // Check if the path is for admin API
+  if (path.startsWith('/api/admin')) {
+    // Check if the user is an admin
+    if (!isAdmin(request)) {
       return NextResponse.json(
-        { error: "未授权访问，请先登录" },
-        { status: 401 },
+        { error: '未授权访问' },
+        { status: 401 }
       );
     }
+    
+    // Allow the request to continue
+    return NextResponse.next();
   }
 
-  // 如果验证通过或不需要验证，继续处理请求
+  // For non-admin routes, allow the request to continue
   return NextResponse.next();
 }
 
-// 配置中间件应用的路径
+// Configure the middleware to run only for admin API routes
 export const config = {
-  matcher: "/:path*",
+  matcher: '/api/admin/:path*',
 };

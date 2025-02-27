@@ -1,57 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as jwt from "jsonwebtoken";
+import { createSessionToken, setSessionCookie, UserRole } from "@/lib/auth";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcrypt";
 
+// Login schema
+const loginSchema = z.object({
+  username: z.string().min(1, "用户名不能为空"),
+  password: z.string().min(1, "密码不能为空"),
+});
+
+// POST /api/login - Login endpoint
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password } = body;
-
-    if (!username || !password) {
-      return NextResponse.json(
-        { error: "用户名和密码不能为空" },
-        { status: 400 }
-      );
-    }
-
-    // 从数据库中查找用户
-    const user = await prisma.admin.findUnique({
-      where: {
-        username: username,
-        password: password,
-      },
+    
+    // Validate input
+    const validatedData = loginSchema.parse(body);
+    
+    // Find user by username
+    const user = await prisma.user.findUnique({
+      where: { username: validatedData.username },
     });
-
+    
+    // Check if user exists
     if (!user) {
       return NextResponse.json(
         { error: "用户名或密码错误" },
         { status: 401 }
       );
     }
-
-    // 创建JWT令牌
-    const token = jwt.sign(
-      { id: user.id, username: user.username },
-      process.env.JWT_SECRET || "fallback_secret",
-      { expiresIn: "1d" }
-    );
-
-    // 返回成功响应
+    
+    // Verify password
+    const passwordMatch = await bcrypt.compare(validatedData.password, user.password);
+    
+    if (!passwordMatch) {
+      return NextResponse.json(
+        { error: "用户名或密码错误" },
+        { status: 401 }
+      );
+    }
+    
+    // Create session token
+    const token = createSessionToken({
+      id: user.id,
+      username: user.username,
+      role: user.role as UserRole,
+    });
+    
+    // Set session cookie
+    await setSessionCookie(token);
+    
+    // Return user info (excluding password)
     return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-      },
-      token,
+      id: user.id,
+      username: user.username,
+      role: user.role,
     });
   } catch (error) {
-    console.error("登录错误:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "输入数据验证失败", details: error.errors },
+        { status: 400 }
+      );
+    }
+    
+    console.error("Login error:", error);
     return NextResponse.json(
-      { error: "登录过程中发生错误" },
+      { error: "登录失败" },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

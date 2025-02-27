@@ -8,7 +8,7 @@ const classSchema = z.object({
   description: z.string().optional(),
 });
 
-// GET /api/classes - Get all classes (public view)
+// GET /api/admin/classes - Get all classes (admin view)
 export async function GET() {
   try {
     const classes = await prisma.class.findMany({
@@ -32,7 +32,7 @@ export async function GET() {
   }
 }
 
-// POST /api/classes - Create a new class
+// POST /api/admin/classes - Create a new class (admin only)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
