@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { post, put } from '@/lib/api';
 
 // Schema for class validation
 const classSchema = z.object({
@@ -63,23 +64,13 @@ export function ClassForm({
 
       // Determine if we're creating or updating
       const url = isEditing
-        ? `/api/classes/${initialData.id}`
-        : "/api/classes";
-      const method = isEditing ? "PUT" : "POST";
+        ? `/admin/classes/${initialData.id}`
+        : "/admin/classes";
 
       // Submit the form
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "操作失败");
-      }
+      const result = isEditing
+        ? await put(url, formData)
+        : await post(url, formData);
 
       // Show success message
       toast.success(isEditing ? "班级更新成功" : "班级创建成功");

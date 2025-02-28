@@ -10,20 +10,25 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { token } = useAuthStore();
 
   useEffect(() => {
-    if (user === null) {
+    console.log("user", token);
+    console.log("hello");
+
+    if (token === null) {
       return;
     }
 
-    if (!isAuthenticated) {
+    if (!token) {
       router.push("/login");
     }
-  }, [isAuthenticated, router, user]);
+    return;
+  }, [token, router]);
 
   // 如果未认证，不渲染子组件
-  if (!isAuthenticated) {
+  if (!token) {
+    router.push("/login");
     return null;
   }
 

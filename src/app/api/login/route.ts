@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionToken, setSessionCookie, UserRole } from "@/lib/auth";
+import { createJWTToken } from "@/lib/auth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcrypt";
+// import bcrypt from "bcryptjs";
 
 // Login schema
 const loginSchema = z.object({
@@ -19,10 +19,14 @@ export async function POST(request: NextRequest) {
     const validatedData = loginSchema.parse(body);
     
     // Find user by username
-    const user = await prisma.user.findUnique({
-      where: { username: validatedData.username },
+    const user = await prisma.admin.findUnique({
+      where: { 
+        username: validatedData.username,
+        password: validatedData.password,
+      },
     });
     
+    console.log(user);
     // Check if user exists
     if (!user) {
       return NextResponse.json(
@@ -32,31 +36,33 @@ export async function POST(request: NextRequest) {
     }
     
     // Verify password
-    const passwordMatch = await bcrypt.compare(validatedData.password, user.password);
+    // const passwordMatch = await bcrypt.compare(validatedData.password, user.password);
     
-    if (!passwordMatch) {
-      return NextResponse.json(
-        { error: "用户名或密码错误" },
-        { status: 401 }
-      );
-    }
+    // if (!passwordMatch) {
+    //   return NextResponse.json(
+    //     { error: "用户名或密码错误" },
+    //     { status: 401 }
+    //   );
+    // }
     
     // Create session token
-    const token = createSessionToken({
+    const token = createJWTToken({
       id: user.id,
       username: user.username,
-      role: user.role as UserRole,
+      role: 'admin',
     });
     
     // Set session cookie
-    await setSessionCookie(token);
+    // await setSessionCookie(token);
     
     // Return user info (excluding password)
     return NextResponse.json({
       id: user.id,
       username: user.username,
-      role: user.role,
+      role: 'admin',
+      token: token,
     });
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

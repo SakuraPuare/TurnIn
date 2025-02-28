@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { post } from '@/lib/api';
 
 // Schema for student validation
 const studentSchema = z.object({
@@ -170,21 +171,10 @@ export function BatchStudentForm({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/classes/${classId}/students/batch`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ students: parsedStudents }),
+      const result = await post(`/classes/${classId}/students/batch`, {
+        students: parsedStudents
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "批量添加学生失败");
-      }
-
-      const result = await response.json();
-      
       toast.success(`成功添加 ${result.added} 名学生${result.duplicates > 0 ? `，${result.duplicates} 名学生已存在` : ''}`);
       
       // Close the dialog and refresh the data

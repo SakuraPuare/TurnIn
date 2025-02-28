@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { del } from '@/lib/api';
 
 interface DeleteConfirmDialogProps {
   open: boolean;
@@ -37,14 +38,7 @@ export function DeleteConfirmDialog({
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`${apiEndpoint}/${itemId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "删除失败");
-      }
+      await del(`${apiEndpoint.replace('/api', '')}/${itemId}`);
 
       toast.success("删除成功");
       onOpenChange(false);

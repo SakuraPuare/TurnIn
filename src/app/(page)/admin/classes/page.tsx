@@ -15,6 +15,7 @@ import {
 import { ClassForm } from "@/components/ClassForm";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { Plus, Pencil, Trash2, Users, ChevronRight } from "lucide-react";
+import { get } from '@/lib/api';
 
 interface Class {
   id: string;
@@ -47,13 +48,7 @@ export default function ClassesPage() {
     setError(null);
     
     try {
-      const response = await fetch("/api/classes");
-      
-      if (!response.ok) {
-        throw new Error("获取班级列表失败");
-      }
-      
-      const data = await response.json();
+      const data = await get('/classes');
       setClasses(data);
     } catch (error) {
       console.error("Error fetching classes:", error);
@@ -200,7 +195,7 @@ export default function ClassesPage() {
           title="删除班级"
           description={`确定要删除班级 "${classToDelete.name}" 吗？此操作将同时删除该班级下的所有学生数据，且不可恢复。`}
           itemId={classToDelete.id}
-          apiEndpoint="/api/classes"
+          apiEndpoint="/api/admin/classes"
         />
       )}
 

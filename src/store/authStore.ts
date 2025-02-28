@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { post } from '@/lib/api';
 
 interface User {
   id: string;
@@ -26,21 +27,8 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: async (username: string, password: string) => {
         try {
-          // 使用 /api/login 端点进行身份验证
-          const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
-          });
-          
-          if (!response.ok) {
-            return false;
-          }
-          
-          const data = await response.json();
-          
+          const data = await post('/login', { username, password });
+          console.log(data);
           if (data.token) {
             set({ 
               user: data.user, 

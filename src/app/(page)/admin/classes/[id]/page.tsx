@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { get } from '@/lib/api';
 
 interface Student {
   id: string;
@@ -73,21 +74,15 @@ export default function ClassDetailPage(
     setError(null);
     
     try {
-      const response = await fetch(`/api/classes/${params.id}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          router.push("/admin/classes");
-          toast.error("班级不存在");
-          return;
-        }
-        throw new Error("获取班级信息失败");
-      }
-      
-      const data = await response.json();
+      const data = await get(`/classes/${params.id}`);
       setClassData(data);
     } catch (error) {
       console.error("Error fetching class:", error);
+      if (error.response?.status === 404) {
+        router.push("/admin/classes");
+        toast.error("班级不存在");
+        return;
+      }
       setError(error instanceof Error ? error.message : "获取班级信息失败");
       toast.error("获取班级信息失败");
     } finally {

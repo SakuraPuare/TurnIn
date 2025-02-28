@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { post, put } from '@/lib/api';
 
 // Schema for student validation
 const studentSchema = z.object({
@@ -71,23 +72,13 @@ export function StudentForm({
 
       // Determine if we're creating or updating
       const url = isEditing
-        ? `/api/classes/${classId}/students/${initialData.id}`
-        : `/api/classes/${classId}/students`;
-      const method = isEditing ? "PUT" : "POST";
+        ? `/classes/${classId}/students/${initialData.id}`
+        : `/classes/${classId}/students`;
 
       // Submit the form
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "操作失败");
-      }
+      const result = isEditing
+        ? await put(url, formData)
+        : await post(url, formData);
 
       // Show success message
       toast.success(isEditing ? "学生信息更新成功" : "学生添加成功");
