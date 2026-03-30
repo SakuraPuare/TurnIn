@@ -12,27 +12,26 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  getToken: () => string | null;
+  setHasHydrated: (hasHydrated: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
+      hasHydrated: false,
       login: async (username: string, password: string) => {
         try {
           const data = await post('/login', { username, password });
-          console.log(data);
-          if (data.token) {
+
+          if (data.user) {
             set({ 
-              user: data.user, 
-              token: data.token, 
+              user: data.user,
               isAuthenticated: true 
             });
             return true;
@@ -45,12 +44,15 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       logout: () => {
-        set({ user: null, token: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false });
       },
-      getToken: () => get().token,
+      setHasHydrated: (hasHydrated: boolean) => set({ hasHydrated }),
     }),
     {
       name: "auth-storage", // localStorage的键名
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
-); 
+);

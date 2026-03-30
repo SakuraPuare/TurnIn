@@ -1,22 +1,23 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 
-export default function Login() {
+function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuthStore();
+  const redirectTarget = searchParams.get("redirect");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,9 +25,12 @@ export default function Login() {
 
     try {
       const success = await login(username, password);
-      console.log(success);
       if (success) {
-        router.push("/admin");
+        router.replace(
+          redirectTarget && redirectTarget.startsWith("/admin")
+            ? redirectTarget
+            : "/admin",
+        );
       } else {
         toast.error("用户名或密码错误");
       }
@@ -80,18 +84,6 @@ export default function Login() {
                 />
               </div>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember-me" />
-                <Label htmlFor="remember-me" className="text-sm font-normal">记住我</Label>
-              </div>
-
-              <Button variant="link" className="p-0 h-auto text-sm">
-                忘记密码?
-              </Button>
-            </div>
-
             <Button
               type="submit"
               disabled={loading}
@@ -103,5 +95,13 @@ export default function Login() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

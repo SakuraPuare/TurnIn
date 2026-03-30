@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createJWTToken } from "@/lib/auth";
+import { createJWTToken, setSessionCookie } from "@/lib/auth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-// import bcrypt from "bcryptjs";
+import bcrypt from "bcryptjs";
 
 // Login schema
 const loginSchema = z.object({
@@ -20,30 +20,24 @@ export async function POST(request: NextRequest) {
     
     // Find user by username
     const user = await prisma.admin.findUnique({
-      where: { 
+      where: {
         username: validatedData.username,
-        password: validatedData.password,
       },
     });
     
-    console.log(user);
-    // Check if user exists
-    if (!user) {
+    const passwordMatches = user
+      ? user.password.startsWith("$2")
+        ? await bcrypt.compare(validatedData.password, user.password)
+        : user.password === validatedData.password
+      : false;
+
+    // Check if user exists and password matches
+    if (!user || !passwordMatches) {
       return NextResponse.json(
         { error: "用户名或密码错误" },
         { status: 401 }
       );
     }
-    
-    // Verify password
-    // const passwordMatch = await bcrypt.compare(validatedData.password, user.password);
-    
-    // if (!passwordMatch) {
-    //   return NextResponse.json(
-    //     { error: "用户名或密码错误" },
-    //     { status: 401 }
-    //   );
-    // }
     
     // Create session token
     const token = createJWTToken({
@@ -51,16 +45,15 @@ export async function POST(request: NextRequest) {
       username: user.username,
       role: 'admin',
     });
-    
-    // Set session cookie
-    // await setSessionCookie(token);
-    
-    // Return user info (excluding password)
+
+    await setSessionCookie(token);
+
     return NextResponse.json({
-      id: user.id,
-      username: user.username,
-      role: 'admin',
-      token: token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: 'admin',
+      },
     });
 
   } catch (error) {

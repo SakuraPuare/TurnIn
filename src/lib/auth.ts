@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { User } from '@/types';
 
@@ -15,6 +16,23 @@ export function createJWTToken(user: User): string {
     JWT_SECRET,
     { expiresIn: '1d' }
   );
+}
+
+export async function setSessionCookie(token: string) {
+  const cookieStore = await cookies();
+
+  cookieStore.set("JWT", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24,
+  });
+}
+
+export async function clearSessionCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete("JWT");
 }
 
 // Verify a JWT token

@@ -1,32 +1,27 @@
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
+export class ApiError extends Error {
+  status?: number;
+  data?: unknown;
+
+  constructor(message: string, status?: number, data?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
 // 创建 axios 实例
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || '/api', // 默认使用相对路径 /api
   timeout: 10000, // 请求超时时间
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// 请求拦截器
-api.interceptors.request.use(
-  (config) => {
-    // 从 useAuthStore 获取 token
-    const token = useAuthStore.getState().token;
-    
-    // 如果存在 token，则添加到请求头
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // 响应拦截器
 api.interceptors.response.use(
@@ -38,6 +33,8 @@ api.interceptors.response.use(
     if (error.response) {
       // 服务器返回了错误状态码
       const status = error.response.status;
+      const data = error.response.data as { error?: string; message?: string } | undefined;
+      const message = data?.error || data?.message || `请求失败 (${status})`;
       
       // 处理 401 未授权错误（token 过期或无效）
       if (status === 401) {
@@ -46,11 +43,11 @@ api.interceptors.response.use(
       }
       
       // 返回错误信息
-      return Promise.reject(error.response.data);
+      return Promise.reject(new ApiError(message, status, error.response.data));
     }
     
     // 请求被取消或网络错误
-    return Promise.reject(error.message);
+    return Promise.reject(new ApiError(error.message || "网络请求失败"));
   }
 );
 
@@ -64,9 +61,23 @@ export const post = <T = any>(url: string, data?: any, config?: AxiosRequestConf
   return api.post<T, T>(url, data, config);
 };
 
+export const postForm = <T = any>(url: string, data: FormData, config?: AxiosRequestConfig) => {
+  const headers = { ...(config?.headers || {}) };
+  delete (headers as Record<string, unknown>)["Content-Type"];
+
+  return api.post<T, T>(url, data, {
+    ...config,
+    headers,
+  });
+};
+
 // 封装 PUT 请求
 export const put = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) => {
   return api.put<T, T>(url, data, config);
+};
+
+export const patch = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) => {
+  return api.patch<T, T>(url, data, config);
 };
 
 // 封装 DELETE 请求

@@ -10,10 +10,8 @@ export default function Header() {
         <h1 className="text-xl font-bold text-gray-800">Turn In 作业递交</h1>
 
         <div className="grow"></div>
-        <Button variant="outline">
-          <Link
-            href="/admin"
-          >
+        <Button variant="outline" asChild>
+          <Link href="/admin">
             后台管理
           </Link>
         </Button>
