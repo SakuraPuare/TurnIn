@@ -9,7 +9,23 @@ const classSchema = z.object({
   description: z.string().optional(),
 });
 
-// GET /api/admin/classes/[id] - Get a specific class (admin view)
+/**
+ * [CLS-01] 班级详情与作业进度聚合接口
+ *
+ * 设计意图：
+ * - 班级详情页要同时看到学生列表和作业进度，不能要求前端分别再聚合统计。
+ * - 该接口直接输出“预计人数、已提交、待审核、审核通过、退回修改、最近提交时间”等教学管理指标。
+ *
+ * 运行逻辑：
+ * 1. 查询班级、学生和已分配作业
+ * 2. 批量查询该班级相关提交
+ * 3. 按作业维度聚合统计进度指标
+ *
+ * 文档映射：
+ * - docs/software-design-specification.md
+ * - docs/database-design-specification.md
+ * - docs/module-feature-matrix.md
+ */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
@@ -74,6 +90,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       : [];
 
     const assignmentProgress = classData.assignments.map((assignment) => {
+      // 这里按作业维度做聚合，而不是把统计留给前端，是为了保证指标口径在后台唯一。
       const assignmentSubmissions = submissions.filter(
         (submission) => submission.assignmentId === assignment.id,
       );
@@ -172,7 +189,13 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
   }
 }
 
-// DELETE /api/admin/classes/[id] - Delete a class (admin only)
+/**
+ * [CLS-02] 班级删除的附件清理策略
+ *
+ * 设计意图：
+ * - 班级删除不仅是数据库级联删除，还必须把该班级学生已经上传的附件清掉。
+ * - 否则班级业务对象已经不存在，磁盘中仍会保留不可追踪的教学材料副本。
+ */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {

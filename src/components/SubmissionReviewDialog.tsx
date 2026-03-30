@@ -16,6 +16,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+/**
+ * [REV-03] 审核处理弹窗
+ *
+ * 设计意图：
+ * - 管理员审核时需要看到“学生填写内容 + 学生备注 + 附件 + 审核输入框”一整套上下文。
+ * - 这里把解析展示和状态变更放在同一弹窗，保证审核动作具备完整证据链。
+ *
+ * 文档映射：
+ * - docs/user-operation-manual.md
+ * - docs/use-case-specification.md
+ */
 interface SubmissionRequiredField {
   name: string;
   label: string;

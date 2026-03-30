@@ -23,6 +23,18 @@ import {
 } from "@/components/ui/table";
 import { SubmissionReviewDialog } from "@/components/SubmissionReviewDialog";
 
+/**
+ * [REV-02] 管理端审核工作台
+ *
+ * 设计意图：
+ * - 审核页不仅要展示提交记录，还要承担“筛选、定位、审核后局部刷新”的工作台职责。
+ * - 因此前端这里维护了一份本地提交状态，用于在审核成功后即时回写，而不是强制整页刷新。
+ *
+ * 文档映射：
+ * - docs/user-operation-manual.md
+ * - docs/module-feature-matrix.md
+ * - docs/test-and-acceptance-specification.md
+ */
 interface ClassOption {
   id: string;
   name: string;

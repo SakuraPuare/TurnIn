@@ -7,6 +7,18 @@ const reviewSchema = z.object({
   reviewNotes: z.string().optional(),
 });
 
+/**
+ * [REV-01] 提交审核写回接口
+ *
+ * 设计意图：
+ * - 审核动作不是简单改一个状态，而是要把审核状态、审核备注、审核时间作为一组结果回写。
+ * - 接口直接返回学生、作业和字段信息，保证前端审核台可以就地刷新，而不用重新整页拉取。
+ *
+ * 文档映射：
+ * - docs/api-interface-specification.md
+ * - docs/use-case-specification.md
+ * - docs/security-and-permission-design.md
+ */
 export async function PATCH(
   request: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -34,6 +46,7 @@ export async function PATCH(
       data: {
         status: validatedData.status,
         reviewNotes: validatedData.reviewNotes?.trim() || null,
+        // reviewedAt 记录的是“本次审核动作”的时间，而不是学生提交时间。
         reviewedAt: new Date(),
       },
       include: {
