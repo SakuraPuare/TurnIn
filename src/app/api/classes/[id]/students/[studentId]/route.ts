@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { removeStoredFiles } from "@/lib/fileStorage";
 
 // Schema for student validation
 const studentSchema = z.object({
@@ -13,9 +14,10 @@ const studentSchema = z.object({
 // PUT /api/classes/[id]/students/[studentId] - Update a student
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; studentId: string } }
+  props: { params: Promise<{ id: string; studentId: string }> }
 ) {
   try {
+    const params = await props.params;
     const classId = params.id;
     const studentId = params.studentId;
     const body = await request.json();
@@ -46,21 +48,28 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    if (existingStudent.classId !== classId) {
+      return NextResponse.json(
+        { error: "学生不属于当前班级" },
+        { status: 400 }
+      );
+    }
     
     // If student ID is changed, check if the new ID already exists
     if (validatedData.studentId !== existingStudent.studentId) {
       const duplicateStudent = await prisma.student.findFirst({
         where: {
-          AND: [
-            { classId },
-            { studentId: validatedData.studentId }
-          ]
+          studentId: validatedData.studentId,
+          NOT: {
+            id: studentId,
+          },
         },
       });
       
       if (duplicateStudent) {
         return NextResponse.json(
-          { error: "该学号在此班级中已存在" },
+          { error: "该学号已存在，不能重复使用" },
           { status: 400 }
         );
       }
@@ -92,9 +101,10 @@ export async function PUT(
 // DELETE /api/classes/[id]/students/[studentId] - Delete a student
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; studentId: string } }
+  props: { params: Promise<{ id: string; studentId: string }> }
 ) {
   try {
+    const params = await props.params;
     const classId = params.id;
     const studentId = params.studentId;
     
@@ -121,6 +131,24 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    if (existingStudent.classId !== classId) {
+      return NextResponse.json(
+        { error: "学生不属于当前班级" },
+        { status: 400 }
+      );
+    }
+
+    const submissions = await prisma.submission.findMany({
+      where: {
+        studentId: existingStudent.studentId,
+      },
+      select: {
+        fileUrl: true,
+      },
+    });
+
+    await removeStoredFiles(submissions.map((item) => item.fileUrl));
     
     // Delete student
     await prisma.student.delete({

@@ -18,9 +18,10 @@ const batchStudentSchema = z.object({
 // POST /api/classes/[id]/students/batch - Batch add students to a class
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await props.params;
     const classId = params.id;
     const body = await request.json();
     
@@ -39,17 +40,31 @@ export async function POST(
       );
     }
     
-    // Get existing student IDs in this class
+    const incomingStudentIds = validatedData.students.map((student) => student.studentId);
+
+    // Get existing student IDs globally because studentId is unique
     const existingStudents = await prisma.student.findMany({
-      where: { classId },
+      where: {
+        studentId: {
+          in: incomingStudentIds,
+        },
+      },
       select: { studentId: true },
     });
     
     const existingStudentIds = new Set(existingStudents.map(s => s.studentId));
+    const seenStudentIds = new Set<string>();
     
     // Filter out duplicates
     const newStudents = validatedData.students.filter(
-      student => !existingStudentIds.has(student.studentId)
+      (student) => {
+        if (existingStudentIds.has(student.studentId) || seenStudentIds.has(student.studentId)) {
+          return false;
+        }
+
+        seenStudentIds.add(student.studentId);
+        return true;
+      }
     );
     
     // Count duplicates

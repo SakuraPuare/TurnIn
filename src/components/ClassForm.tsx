@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,17 @@ export function ClassForm({
 
   const isEditing = !!initialData;
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setFormData({
+      name: initialData?.name || "",
+      description: initialData?.description || "",
+    });
+  }, [initialData, open]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -68,9 +79,11 @@ export function ClassForm({
         : "/admin/classes";
 
       // Submit the form
-      const result = isEditing
-        ? await put(url, formData)
-        : await post(url, formData);
+      if (isEditing) {
+        await put(url, formData);
+      } else {
+        await post(url, formData);
+      }
 
       // Show success message
       toast.success(isEditing ? "班级更新成功" : "班级创建成功");

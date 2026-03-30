@@ -13,9 +13,10 @@ const studentSchema = z.object({
 // POST /api/classes/[id]/students - Add a student to a class
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await props.params;
     const classId = params.id;
     const body = await request.json();
     
@@ -34,19 +35,16 @@ export async function POST(
       );
     }
     
-    // Check if student with the same ID already exists in this class
-    const existingStudent = await prisma.student.findFirst({
+    // studentId is globally unique in the schema
+    const existingStudent = await prisma.student.findUnique({
       where: {
-        AND: [
-          { classId },
-          { studentId: validatedData.studentId }
-        ]
+        studentId: validatedData.studentId,
       },
     });
     
     if (existingStudent) {
       return NextResponse.json(
-        { error: "该学号在此班级中已存在" },
+        { error: "该学号已存在，不能重复添加" },
         { status: 400 }
       );
     }
