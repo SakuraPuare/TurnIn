@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * [STU-01] 学生端作业聚合接口
+ *
+ * 设计意图：
+ * - 学生首页不是简单读取作业表，而是要把“班级范围作业 + 动态字段 + 个人最新提交”一次聚合出来。
+ * - 这样前端只需要一个接口就能渲染作业卡片和个人状态，减少多次往返请求。
+ *
+ * 文档映射：
+ * - docs/api-interface-specification.md
+ * - docs/software-design-specification.md
+ * - docs/module-feature-matrix.md
+ */
 export async function GET(
   request: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -21,6 +33,7 @@ export async function GET(
 
     let studentAcademicId: string | null = null;
 
+    // 学生端允许“先选班级再看作业”，只有选择具体学生后才附带个人提交状态。
     if (studentRecordId) {
       const student = await prisma.student.findFirst({
         where: {
@@ -69,6 +82,7 @@ export async function GET(
     });
 
     const response = assignments.map((assignment) => {
+      // 每个学生对同一作业只有一条当前提交记录，因此只取最新一条即可驱动学生端展示。
       const submission =
         studentAcademicId && Array.isArray(assignment.submissions)
           ? assignment.submissions[0] || null

@@ -19,6 +19,17 @@ import {
 import { postForm } from "@/lib/api";
 import { buildExpectedFileBase, parseRequiredFieldOptions } from "@/lib/submission";
 
+/**
+ * [STU-03] 学生提交弹窗
+ *
+ * 设计意图：
+ * - 学生提交时需要同时看到命名规则、动态字段、历史附件和审核反馈，这些信息必须在同一上下文里完成。
+ * - 弹窗形态可以让学生在不离开作业列表的情况下完成更新和重提。
+ *
+ * 文档映射：
+ * - docs/user-operation-manual.md
+ * - docs/software-design-specification.md
+ */
 interface Student {
   id: string;
   studentId: string;

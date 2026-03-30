@@ -19,6 +19,18 @@ import {
 import { post, put } from "@/lib/api";
 import { stringifyRequiredFieldOptions, parseRequiredFieldOptions } from "@/lib/submission";
 
+/**
+ * [ASM-03] 作业配置表单
+ *
+ * 设计意图：
+ * - 该表单不是普通 CRUD 表单，核心在于把“作业基础信息 + 适用班级 + 动态字段配置”收束到一次编辑动作中。
+ * - 字段标识、字段类型、选项序列化逻辑都与学生提交链路共享，保证配置和运行时行为保持同源。
+ *
+ * 文档映射：
+ * - docs/software-design-specification.md
+ * - docs/use-case-specification.md
+ * - docs/module-feature-matrix.md
+ */
 const requiredFieldSchema = z
   .object({
     name: z

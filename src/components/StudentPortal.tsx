@@ -19,6 +19,18 @@ import { get } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { StudentSubmissionDialog } from "@/components/StudentSubmissionDialog";
 
+/**
+ * [STU-02] 学生端聚合门户
+ *
+ * 设计意图：
+ * - 首页要承担“班级入口、身份确认、作业列表、审核反馈”四个角色，不能把学生流程拆散到多个页面。
+ * - 通过一个聚合组件把班级、学生、作业、审核状态统一串起来，降低学生的操作成本。
+ *
+ * 文档映射：
+ * - docs/user-operation-manual.md
+ * - docs/use-case-specification.md
+ * - docs/module-feature-matrix.md
+ */
 interface ClassItem {
   id: string;
   name: string;

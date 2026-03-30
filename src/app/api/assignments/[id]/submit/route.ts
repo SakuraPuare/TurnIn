@@ -14,6 +14,13 @@ export const runtime = "nodejs";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
+/**
+ * [SUB-04] 学生提交流水的表单解包器
+ *
+ * 设计意图：
+ * - 前端通过 multipart/form-data 同时传文件和结构化字段，接口层需要先把 JSON 字段还原。
+ * - 这里把“解析失败”和“字段为空对象”区分开，便于后续返回更明确的错误。
+ */
 function safeParseFormData(rawValue: string | null) {
   if (!rawValue) {
     return {};
@@ -34,6 +41,26 @@ function safeParseFormData(rawValue: string | null) {
   }
 }
 
+/**
+ * [SUB-05] 学生作业提交接口
+ *
+ * 设计意图：
+ * - 该接口是系统最核心的业务入口，负责把“班级归属校验、命名规则校验、动态字段校验、附件写入、提交状态重置”
+ *   串成一次原子化业务操作。
+ * - 学生每次更新提交后都会把状态打回 pending，确保审核结果总是对应最新内容。
+ *
+ * 运行流程：
+ * 1. 解析 multipart/form-data
+ * 2. 并行读取作业定义和学生身份
+ * 3. 校验班级覆盖关系、作业状态和动态字段
+ * 4. 校验并落盘附件
+ * 5. upsert 提交记录并重置审核状态
+ *
+ * 文档映射：
+ * - docs/api-interface-specification.md
+ * - docs/software-design-specification.md
+ * - docs/test-and-acceptance-specification.md
+ */
 export async function POST(
   request: NextRequest,
   props: { params: Promise<{ id: string }> },
@@ -90,6 +117,7 @@ export async function POST(
       return NextResponse.json({ error: "学生不存在" }, { status: 404 });
     }
 
+    // 只有作业所覆盖班级内的学生才能提交，防止公开学生入口被跨班级滥用。
     const allowedClass = assignment.classes.some((item) => item.id === student.classId);
 
     if (!allowedClass) {
@@ -117,6 +145,7 @@ export async function POST(
 
     let fileUrl = existingSubmission?.fileUrl || null;
 
+    // 附件是可选项，但一旦上传，就必须满足大小和命名约束。
     if (upload instanceof File && upload.size > 0) {
       if (upload.size > MAX_FILE_SIZE) {
         return NextResponse.json({ error: "附件大小不能超过 10MB" }, { status: 400 });
@@ -146,6 +175,7 @@ export async function POST(
       await fs.mkdir(uploadDir, { recursive: true });
       await fs.writeFile(filePath, buffer);
 
+      // 学生覆盖提交时，新附件落盘成功后再删除旧文件，避免异常中断导致两边都丢。
       await removeStoredFile(existingSubmission?.fileUrl);
 
       fileUrl = `/uploads/submissions/${storedFileName}`;
@@ -181,6 +211,7 @@ export async function POST(
         fileUrl,
         notes: notes || null,
         formData: JSON.stringify(validatedFields.data),
+        // 任何更新都意味着上一轮审核结论已经失效，因此统一退回待审核状态。
         status: "pending",
         reviewNotes: null,
         reviewedAt: null,
