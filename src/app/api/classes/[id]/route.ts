@@ -11,6 +11,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       where: { id: classId },
       include: {
         students: {
+          select: {
+            id: true,
+            studentId: true,
+            name: true,
+          },
           orderBy: {
             studentId: "asc",
           },

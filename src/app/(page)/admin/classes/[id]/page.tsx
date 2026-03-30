@@ -16,14 +16,15 @@ import { ClassForm } from "@/components/ClassForm";
 import { StudentForm } from "@/components/StudentForm";
 import { BatchStudentForm } from "@/components/BatchStudentForm";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { ArrowLeft, Plus, Pencil, Trash2, Users, Upload } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Users, Upload, BookMarked } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { get } from '@/lib/api';
+import { ApiError, get } from '@/lib/api';
+import { cn } from "@/lib/utils";
 
 interface Student {
   id: string;
@@ -41,8 +42,43 @@ interface Class {
   createdAt: string;
   updatedAt: string;
   students: Student[];
+  assignmentProgress: {
+    id: string;
+    title: string;
+    deadline: string;
+    status: string;
+    fileNameFormat: string;
+    requiredFieldCount: number;
+    submittedCount: number;
+    completedCount: number;
+    pendingCount: number;
+    failedCount: number;
+    expectedCount: number;
+    latestSubmissionAt: string | null;
+  }[];
   _count?: {
     students: number;
+  };
+}
+
+function getAssignmentStatus(status: string, deadline: string) {
+  if (status === "closed") {
+    return {
+      label: "已关闭",
+      className: "bg-slate-100 text-slate-700",
+    };
+  }
+
+  if (new Date(deadline).getTime() < Date.now()) {
+    return {
+      label: "已截止",
+      className: "bg-amber-100 text-amber-700",
+    };
+  }
+
+  return {
+    label: "进行中",
+    className: "bg-emerald-100 text-emerald-700",
   };
 }
 
@@ -74,11 +110,11 @@ export default function ClassDetailPage(
     setError(null);
     
     try {
-      const data = await get(`/classes/${params.id}`);
+      const data = await get(`/admin/classes/${params.id}`);
       setClassData(data);
     } catch (error) {
       console.error("Error fetching class:", error);
-      if (error.response?.status === 404) {
+      if (error instanceof ApiError && error.status === 404) {
         router.push("/admin/classes");
         toast.error("班级不存在");
         return;
@@ -187,6 +223,82 @@ export default function ClassDetailPage(
       </div>
 
       <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">作业进度</h2>
+          <div className="text-sm text-muted-foreground">
+            已分配 {classData.assignmentProgress.length} 个作业
+          </div>
+        </div>
+
+        {classData.assignmentProgress.length === 0 ? (
+          <div className="flex flex-col justify-center items-center h-48 border rounded-lg p-6 bg-muted/50">
+            <BookMarked className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">暂无作业</h3>
+            <p className="text-muted-foreground">
+              当前班级还没有分配作业，请到“作业管理”中配置并关联班级。
+            </p>
+          </div>
+        ) : (
+          <div className="border rounded-lg mb-8">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>作业</TableHead>
+                  <TableHead>截止时间</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>已提交</TableHead>
+                  <TableHead>审核通过</TableHead>
+                  <TableHead>待审核</TableHead>
+                  <TableHead>退回修改</TableHead>
+                  <TableHead>附加字段</TableHead>
+                  <TableHead>最近提交</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {classData.assignmentProgress.map((assignment) => {
+                  const status = getAssignmentStatus(assignment.status, assignment.deadline);
+
+                  return (
+                    <TableRow key={assignment.id}>
+                      <TableCell className="font-medium">
+                        <div>{assignment.title}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          命名规则：{assignment.fileNameFormat}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(assignment.deadline).toLocaleString("zh-CN")}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-1 text-xs font-medium",
+                            status.className,
+                          )}
+                        >
+                          {status.label}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {assignment.submittedCount}/{assignment.expectedCount}
+                      </TableCell>
+                      <TableCell>{assignment.completedCount}</TableCell>
+                      <TableCell>{assignment.pendingCount}</TableCell>
+                      <TableCell>{assignment.failedCount}</TableCell>
+                      <TableCell>{assignment.requiredFieldCount}</TableCell>
+                      <TableCell>
+                        {assignment.latestSubmissionAt
+                          ? new Date(assignment.latestSubmissionAt).toLocaleString("zh-CN")
+                          : "-"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">学生列表</h2>
           <div className="flex space-x-2">
@@ -311,7 +423,7 @@ export default function ClassDetailPage(
         title="删除班级"
         description={`确定要删除班级 "${classData.name}" 吗？此操作将同时删除该班级下的所有学生数据，且不可恢复。`}
         itemId={classData.id}
-        apiEndpoint="/api/classes"
+        apiEndpoint="/api/admin/classes"
       />
 
       {/* Delete Student Confirmation Dialog */}

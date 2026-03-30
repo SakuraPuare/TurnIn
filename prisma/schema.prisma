@@ -24,7 +24,7 @@ model Admin {
 model Class {
   id          String       @id @default(cuid())
   name        String       @unique
-  description String?
+  description String?      @db.Text
   students    Student[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -49,7 +49,7 @@ model Student {
 model Assignment {
   id             String          @id @default(uuid())
   title          String
-  description    String?
+  description    String?         @db.Text
   deadline       DateTime
   status         String          @default("active") // active, closed
   fileNameFormat String          @default("{studentId}_{assignmentTitle}")
@@ -65,8 +65,8 @@ model RequiredField {
   name         String
   label        String
   type         String     @default("text") // text, select, number
-  description  String?
-  options      String? // JSON string for select options
+  description  String?    @db.Text
+  options      String?    @db.Text // JSON string for select options
   required     Boolean    @default(true)
   assignmentId String
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
@@ -79,9 +79,11 @@ model Submission {
   assignmentId String
   studentId    String
   fileUrl      String?
-  notes        String?
-  formData     String? // JSON格式存储表单数据
+  notes        String?    @db.Text
+  formData     String?    @db.Text // JSON格式存储表单数据
   status       String     @default("pending") // pending, completed, failed
+  reviewNotes  String?    @db.Text
+  reviewedAt   DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)

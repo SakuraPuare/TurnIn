@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { removeStoredFiles } from "@/lib/fileStorage";
 
 // Schema for class validation
 const classSchema = z.object({
@@ -22,6 +23,23 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             studentId: "asc",
           },
         },
+        assignments: {
+          orderBy: [
+            {
+              deadline: "asc",
+            },
+            {
+              createdAt: "desc",
+            },
+          ],
+          include: {
+            _count: {
+              select: {
+                requiredFields: true,
+              },
+            },
+          },
+        },
         _count: {
           select: { students: true }
         }
@@ -34,8 +52,58 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         { status: 404 }
       );
     }
+
+    const assignmentIds = classData.assignments.map((assignment) => assignment.id);
+    const submissions = assignmentIds.length > 0
+      ? await prisma.submission.findMany({
+          where: {
+            assignmentId: {
+              in: assignmentIds,
+            },
+            student: {
+              classId,
+            },
+          },
+          select: {
+            assignmentId: true,
+            studentId: true,
+            status: true,
+            updatedAt: true,
+          },
+        })
+      : [];
+
+    const assignmentProgress = classData.assignments.map((assignment) => {
+      const assignmentSubmissions = submissions.filter(
+        (submission) => submission.assignmentId === assignment.id,
+      );
+
+      const latestSubmissionAt = assignmentSubmissions.reduce<Date | null>(
+        (latest, submission) =>
+          !latest || submission.updatedAt > latest ? submission.updatedAt : latest,
+        null,
+      );
+
+      return {
+        id: assignment.id,
+        title: assignment.title,
+        deadline: assignment.deadline,
+        status: assignment.status,
+        fileNameFormat: assignment.fileNameFormat,
+        requiredFieldCount: assignment._count.requiredFields,
+        submittedCount: assignmentSubmissions.length,
+        completedCount: assignmentSubmissions.filter((item) => item.status === "completed").length,
+        pendingCount: assignmentSubmissions.filter((item) => item.status === "pending").length,
+        failedCount: assignmentSubmissions.filter((item) => item.status === "failed").length,
+        expectedCount: classData.students.length,
+        latestSubmissionAt,
+      };
+    });
     
-    return NextResponse.json(classData);
+    return NextResponse.json({
+      ...classData,
+      assignmentProgress,
+    });
   } catch (error) {
     console.error("Error fetching class:", error);
     return NextResponse.json(
@@ -121,6 +189,19 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
         { status: 404 }
       );
     }
+
+    const submissions = await prisma.submission.findMany({
+      where: {
+        student: {
+          classId,
+        },
+      },
+      select: {
+        fileUrl: true,
+      },
+    });
+
+    await removeStoredFiles(submissions.map((item) => item.fileUrl));
     
     // Delete class (cascade will delete related students)
     await prisma.class.delete({
