@@ -6,7 +6,10 @@
     "dev": "NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:init-admin": "tsx scripts/init-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
